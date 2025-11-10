@@ -1,17 +1,20 @@
-#decider_agent
+#decider_agent.py
 
 import json
 from agents.llm_main import llm  # Assuming this is your initialized LLM instance
 from textwrap import dedent
 from typing import List
 
+# --- MODIFIED: Added rag_agent ---
 AGENT_DEFINITIONS = {
     "create_data_analysis_agent": "Analyzes the user's financial data to find stats, trends, and anomalies. This should almost always be the first step.",
+    "rag_agent": "Answers specific questions by reading and retrieving information directly from the user's document. Use for summarization or 'what is/find' queries about the document content.",
     "create_research_agent": "Performs external research online for information not in the user's data (e.g., flight costs, product prices, investment tips).",
     "create_visualization_points": "Generates structured JSON data for charts. Use only when the user explicitly asks for a graph, chart, or visualization.",
     "planner": "Synthesizes all gathered information into a final, actionable plan or roadmap. This should usually be the last step.",
     "investment_agent": "Analyzes investment options and suggests the best investment or loan schemes based on the user's financial data and requirements."
 }
+# --- END MODIFICATION ---
 
 def deciding_agent(query: str) -> List[str]:
     """
@@ -25,6 +28,7 @@ def deciding_agent(query: str) -> List[str]:
     valid_agents = list(AGENT_DEFINITIONS.keys())
     valid_agents_str = json.dumps(valid_agents)
 
+    # --- MODIFIED: Added a new example for rag_agent ---
     prompt = dedent(f"""
         You are an expert router agent. Your job is to analyze a user's query and decide which tools (agents) need to be run in a specific sequence to answer it.
 
@@ -57,9 +61,14 @@ def deciding_agent(query: str) -> List[str]:
         *Example 3:*
         Query: "What are the best investment options for me?"
         Response: ["create_data_analysis_agent", "investment_agent"]
+        
+        *Example 4:*
+        Query: "Summarize this document for me."
+        Response: ["rag_agent"]
 
         Now analyze this query and return ONLY the JSON array:
     """)
+    # --- END MODIFICATION ---
 
     try:
         response = llm.invoke(prompt)
@@ -74,7 +83,7 @@ def deciding_agent(query: str) -> List[str]:
         clean_str = response_str.strip()
         
         # Remove markdown code blocks
-        clean_str = clean_str.replace("json", "").replace("", "").strip()
+        clean_str = clean_str.replace("json", "").replace("`", "").strip() # Fixed typo: `` to `
         
         # If response has extra text, try to extract just the JSON array
         if not clean_str.startswith('['):
@@ -129,7 +138,8 @@ if __name__ == "__main__":
         "Show me a chart of my expenses",
         "Plan a trip to Goa and create a budget",
         "What are the best investment options?",
-        "I want to buy a car, help me plan my finances"
+        "I want to buy a car, help me plan my finances",
+        "What is this document about?" # <-- Test for RAG
     ]
     
     for query in test_queries:

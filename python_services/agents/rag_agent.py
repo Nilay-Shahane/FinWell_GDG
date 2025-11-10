@@ -1,5 +1,6 @@
 import os
-from rag_system import BasicRAG
+
+from .rag_system import BasicRAG
 from dotenv import load_dotenv
 
 def rag_pipeline(file_path, query):
@@ -25,7 +26,7 @@ def get_rag_answer(file_path: str, query: str):
 
 
 if __name__ == "__main__":
-    # Load .env variables (like GOOGLE_API_KEY)
+   
     load_dotenv() 
 
     # --- UPDATED ---

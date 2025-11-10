@@ -1,9 +1,14 @@
+# main_agent.py
+
+# --- MODIFIED: Import the RAG agent function ---
 from agents.data_analysis_agent import create_data_analysis_agent
 from agents.research_agent import create_research_agent
 from agents.visualizing_agent import create_visualization_points
 from agents.decider_agent import deciding_agent
 from agents.planning_agent import planner
 from agents.investment import investment_agent
+from agents.rag_agent import get_rag_answer # <-- ADDED
+# --- END MODIFICATION ---
 
 import pandas as pd
 import json
@@ -11,16 +16,19 @@ import traceback
 
 
 class FinWellAgent:
-    def __init__(self, dataframe, query):
+    # --- MODIFIED: Added csv_filepath to __init__ ---
+    def __init__(self, dataframe, query, csv_filepath: str):
         """
         Orchestrates all financial intelligence agents.
         """
         self.df = dataframe
         self.query = query
+        self.csv_filepath = csv_filepath # <-- ADDED
         self.context = {}
         self.results = {}
         self.final_output = None
         self.errors = {}
+    # --- END MODIFICATION ---
 
     # ---------------------------------------------------------------
     # PIPELINE EXECUTION
@@ -39,9 +47,9 @@ class FinWellAgent:
             if not agent_list:
                 print("⚠ No agents selected for this query.")
                 return {
-                    "response": "No agents were selected to process your query.",
-                    "visualization": None
-                }
+                        "response": "No agents were selected to process your query.",
+                        "visualization": None
+                    }
 
             for agent_name in agent_list:
                 try:
@@ -84,6 +92,17 @@ class FinWellAgent:
                         self.context["investment"] = investment
                         self.results["investment"] = investment
                         print(f"✓ Investment Analysis Complete")
+                    
+                    # --- MODIFIED: Added RAG Agent ---
+                    # ------------------ AGENT 6: RAG AGENT ------------------
+                    elif agent_name == "rag_agent":
+                        print("\n--- Step 6: Querying Document (RAG) ---")
+                        # Use the stored file path and the original query
+                        rag_response = get_rag_answer(self.csv_filepath, self.query)
+                        self.context["rag_response"] = rag_response
+                        self.results["rag_response"] = rag_response
+                        print(f"✓ RAG Query Complete")
+                    # --- END MODIFICATION ---
 
                     else:
                         print(f"⚠ Unknown agent: {agent_name}")
@@ -120,20 +139,24 @@ class FinWellAgent:
     def _determine_final_output(self):
         """
         Determines which agent’s result to return.
-        Priority: plan > investment > research > data_analysis
+        Priority: plan > investment > research > rag_response > data_analysis
         """
         visualization = self.results.get("visualization", None)
 
+        # --- MODIFIED: Added rag_response to priority list ---
         if "plan" in self.results:
             main_response = self.results["plan"]
         elif "investment" in self.results:
             main_response = self.results["investment"]
         elif "research" in self.results:
             main_response = self.results["research"]
+        elif "rag_response" in self.results: # <-- ADDED
+            main_response = self.results["rag_response"]
         elif "data_analysis" in self.results:
             main_response = self.results["data_analysis"]
         else:
             main_response = "No valid output generated."
+        # --- END MODIFICATION ---
 
         return {
             "response": main_response,
@@ -172,6 +195,9 @@ def run_agent_pipeline(query: str, csv_filepath: str):
     except Exception as e:
         return {"error": f"Error reading CSV file: {str(e)}"}
 
-    pipeline = FinWellAgent(df, query)
+    # --- MODIFIED: Pass csv_filepath to the constructor ---
+    pipeline = FinWellAgent(df, query, csv_filepath)
+    # --- END MODIFICATION ---
+    
     final_output = pipeline.run_pipeline()
     return final_output
